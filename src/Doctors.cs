@@ -4,9 +4,9 @@ namespace CallSchedulerApp
     {
         None,
         Jennifer,
-        Eline,
+        Elin,
         Melanie,
-        Halena,
+        Helena,
         Roberta,
         Ange,
         Maja,
