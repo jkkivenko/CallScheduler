@@ -4,16 +4,33 @@ namespace CallSchedulerApp
 {
     public static class Program
     {
-        private static readonly DateOnly StartDate = new(2026, 09, 01);
-        private static readonly DateOnly EndDate = new(2027, 01, 01);
-        private const int MaxGenerations = 1000000;
-        private const int DisplayEveryNGenerations = 50000;
-        private const int NumSurvivors = 12;
-        private const int NumSchedules = 16;
-        private const float MutationChance = 0.25f;
+        private static readonly DateOnly StartDate = new(2027, 01, 01);
+        private static readonly DateOnly EndDate = new(2027, 04, 01);
+        private const int MaxGenerations = 1_000_000;
+        private const int DisplayEveryNGenerations = 1_000;
+        private const int NumSurvivors = 6;
+        private const int NumSchedules = 8;
+        private const float MutationChance = 0.125f;
+        private static readonly Dictionary<Doctor, float> DocShiftLoads = new()
+            {
+                {Doctor.Cram, 1},
+                {Doctor.Raymond, 1},
+                {Doctor.Frecker, 1},
+                {Doctor.Mackenzie, 1},
+                {Doctor.Aggarwal, 1},
+                {Doctor.Gans, 1},
+                {Doctor.Tai, 1},
+                {Doctor.Badmos, 1},
+                {Doctor.Jolliffe, 1},
+                {Doctor.Proisky, 1},
+                {Doctor.Brown, 1},
+                {Doctor.Chan, 0.5f},
+                {Doctor.Iancu, 1},
+                {Doctor.Smith, 1}
+            };
         static void Main(string[] args)
         {
-            EvolutionaryAlgorithm algo = new(StartDate, EndDate, NumSchedules, NumSurvivors, MutationChance);
+            EvolutionaryAlgorithm algo = new(StartDate, EndDate, DocShiftLoads, NumSchedules, NumSurvivors, MutationChance);
 
             bool shouldContinue = true;
             int generation = 0;
@@ -21,17 +38,12 @@ namespace CallSchedulerApp
             {
                 if (generation % DisplayEveryNGenerations == 0)
                 {
-                    // Console.WriteLine("~~~~~~~~~~~~~~~~");
-                    // Console.WriteLine(algo);
-                    Console.WriteLine("Generation {0} Best Fitness: {1}", generation, algo.GetBest().Fitness);
-                    // Console.WriteLine("Best:\n{0}", algo.GetBest());
-                    // ScheduleEvaluator.Evaluate(algo.GetBest(), true);
-                    // Console.ReadLine();
+                    Console.WriteLine("Generation {0} Best Fitness: {1}", generation, ScheduleEvaluator.Evaluate(algo.GetBest(), DebugLevel.Problems));
                 }
-                shouldContinue = algo.RunGeneration();
+                shouldContinue = algo.RunGeneration(generation);
             }
             Console.WriteLine(algo.GetBest());
-            ScheduleEvaluator.Evaluate(algo.GetBest(), true);
+            ScheduleEvaluator.Evaluate(algo.GetBest(), DebugLevel.Problems);
             Console.WriteLine("Finished in {0} generations.", generation);
         }
     }

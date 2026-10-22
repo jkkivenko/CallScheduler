@@ -1,34 +1,93 @@
-If Jennifer's call falls on a weekend, she would like to do both shifts, and if her shift falls on a weekday, she would like to do a combination
-Eline, Melanie, Halena, Roberta, and Ange never want to do 2 calls on the same day
-Maja, Melissa, Lekhi, Courtney, Sarah, and Megan always want to do 2 calls on the same day
-Jennifer cannot work Mondays, Wednesday days, prefers Tuesdays during the week, and prefers Sundays over Saturdays
-Maja prefers Tuesdays and Sundays
-Melissa prefers Thursdays, Fridays, and Saturdays
-Lekhi prefers Wednesdays, Fridays, Saturdays
-Dora prefers Thursdays, Fridays, and Saturdays
-Roberta and Ange prefer Mondays, Tuesdays, and Sundays
-Halena prefers Sundays and Mondays
-Megan prefers Wednesdays
-Eline prefers Sundays, Tuesdays, and Monday nights
-Sarah prefers Wednesdays and Thursdays
-Courtney prefers Thursdays
-Melanie prefers Mondays, Tuesdays, and Thursday days
-Lekhi and Melissa can't work Monday days or Sunday nights
-Melissa can't work on the 5th Thursday day of the month or the night before
-Maja can't work Wednesday days Sarah can't work on the first and third Tuesday days of the month or the night before
-Megan can't work the fourth Tuesday day of the month or the night before or the 2nd Thursday day of the month or the night before
-Courtney can't work the 2nd and 5th Tuesday day of the month or the night before or the 4th Tuesday day of the month or the night before
-Jennifer and Maja can't work Wednesday days
-Ange can't work the 1st and 3rd Wednesday day of the month or the night before
-Roberta can't work the 2nd, 4th, or 5th Wednesday day of the month or the night before
-Halena can't work the 1st or 2nd Thursday day of the month or the night before
-Eline can't work the 1st, 3rd, or 5th Friday day of the month or the night before
-Melanie can't work the 2nd or 4th Friday day of the month or the night before
+## Cram
 
-Everyone should get the same number of weekend call shifts, or as close as possible
+* off tue night, wed day
+* Preferns no sat
+* prefer 12
 
-Done:
-Nobody can work more than 1 day in a 5-day period
+## Raymond
 
-Already handled by problem formulation:
-Can you make it so everybody does a similar number of calls each month, as evenly as possible given all of the previous rules
+* off thu, fri day
+* prefers mon night
+* prefers no sat
+* only 12
+
+## Frecker
+
+* OR 1st and 2nd WOM thu
+* off tue night, wed, thu night, fri day
+* prefers no sat
+* only 12
+
+## Mackenzie
+
+* OR 2nd and 4th WOM wed
+* off wed day
+* preferns no sat
+* only 12
+
+## Aggarwal
+
+* OR 1st and 3rd WOM wed
+* OR 2nd and 4th WOM thu
+* off wed day
+* Preferns no sat
+* only 12
+
+## Gans
+
+* Prefers tue
+* SPECIAL: No more than 50% of tuesdays per month
+* off wed day
+* prefers no sat
+* prefers 24
+
+## Tai
+
+* OR 1st WOM fri
+* OR 5th WOM thu
+* OR 2nd, 4th, and 5th WOM mon
+* OR 1st and 3rd WOM tue
+* prefers no wed
+* prefers 24
+
+## Badmos
+
+* OR every mon
+* Off sun, mon, tue, thu
+* prefers 24
+
+## Jolliffe
+
+* OR 2nd WOM tue, wed
+* OR 4th WOM thu
+* prefers 24
+
+## Proisky
+
+* OR 1st and 3rd WOM mon
+* prefers 24
+
+## Brown
+
+* OR 2nd WOM thu
+* OR every tue
+* prefers wed, thu
+* prefers 24
+
+## Chan
+
+* prefers thu, fri, and sat
+* off sun
+* only 50% call
+* only 12
+
+## Iancu
+
+* OR 2nd WOM fri
+* OR 5th WOM tue, thu
+* prefers 12
+
+## Smith
+
+* OR 2nd and 4th WOM tue
+* prefers 12

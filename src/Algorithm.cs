@@ -4,37 +4,63 @@ namespace CallSchedulerApp
 {
     public class EvolutionaryAlgorithm
     {
-        private readonly DateOnly startDate;
-        private readonly DateOnly endDate;
-        private Schedule[] schedules;
-        private readonly int numSurvivors;
-        private readonly float mutationChance;
-        public Dictionary<Doctor, int> NumShiftsPerDoc = [];
-        public EvolutionaryAlgorithm(DateOnly startDate, DateOnly endDate, int numSchedules, int numSurvivors, float mutationChance)
+        private DateOnly StartDate { get; }
+        private DateOnly EndDate { get; }
+        private Schedule[] Schedules { get; set; }
+        private int NumSurvivors { get; }
+        private float MutationChance { get; }
+        private Dictionary<Doctor, int> DocShiftCounts { get; }
+        public EvolutionaryAlgorithm(DateOnly startDate, DateOnly endDate, Dictionary<Doctor, float> docShiftLoads, int numSchedules, int numSurvivors, float mutationChance)
         {
-            this.startDate = startDate;
-            this.endDate = endDate;
-            schedules = new Schedule[numSchedules];
-            this.numSurvivors = numSurvivors;
-            this.mutationChance = mutationChance;
+            StartDate = startDate;
+            EndDate = endDate;
+            Schedules = new Schedule[numSchedules];
+            NumSurvivors = numSurvivors;
+            MutationChance = mutationChance;
+            DocShiftCounts = GetShiftCounts(docShiftLoads);
             Initialize();
-            foreach (KeyValuePair<Doctor, int> kvp in NumShiftsPerDoc) Console.WriteLine(kvp);
+        }
+        private Dictionary<Doctor, int> GetShiftCounts(Dictionary<Doctor, float> docShiftLoads)
+        {
+            // First we assign each Doctor a number of shifts according to the total number of shifts and their relative shiftload.
+            Dictionary<Doctor, int> shiftCounts = [];
+            float totalShiftLoad = 0;
+            foreach (float shiftLoad in docShiftLoads.Values)
+            {
+                totalShiftLoad += shiftLoad;
+            }
+            int numShiftsMissing = 2 * (EndDate.DayNumber - StartDate.DayNumber);
+            foreach (KeyValuePair<Doctor, float> kvp in docShiftLoads)
+            {
+                int numShifts = (int)(kvp.Value / totalShiftLoad * 2 * (EndDate.DayNumber - StartDate.DayNumber));
+                shiftCounts[kvp.Key] = numShifts;
+                numShiftsMissing -= numShifts;
+            }
+            // Due to rounding, this can cause the number of assigned shifts to be slightly too low. We add more shifts according to a random lottery to fill up the gaps.
+            Doctor[] doctorOrder = [..docShiftLoads.Keys.Shuffle()];
+            int numAdditionaShifts = 0;
+            while (numShiftsMissing - numAdditionaShifts > 0)
+            {
+                shiftCounts[doctorOrder[numAdditionaShifts]] += 1;
+                numAdditionaShifts++;
+            }
+            return shiftCounts;
         }
         private void Initialize()
         {
-            for (int i = 0; i < schedules.Length; i++)
+            for (int i = 0; i < Schedules.Length; i++)
             {
-                Schedule newSchedule = new(startDate, endDate);
-                newSchedule.Randomize();
-                NumShiftsPerDoc = newSchedule.CountDocShifts();
-                schedules[i] = newSchedule;
-                schedules[i].Fitness = ScheduleEvaluator.Evaluate(schedules[i]);
+                Schedule newSchedule = new(StartDate, EndDate, DocShiftCounts);
+                newSchedule.Populate();
+                newSchedule.Shuffle();
+                Schedules[i] = newSchedule;
+                Schedules[i].Fitness = ScheduleEvaluator.Evaluate(Schedules[i]);
             }
         }
         public override string ToString()
         {
             string representation = "";
-            foreach(Schedule schedule in schedules)
+            foreach(Schedule schedule in Schedules)
             {
                 representation += schedule.ToString() + "\n";
             }
@@ -42,25 +68,30 @@ namespace CallSchedulerApp
         }
         public Schedule GetBest()
         {
-            schedules.Sort();
-            return schedules[^1];
+            Schedules.Sort();
+            return Schedules[^1];
         }
-        public bool RunGeneration()
+        public bool RunGeneration(int generation)
         {
-            schedules.Sort();
-            if (schedules[^1].Fitness >= 0) return false;
+            // note GetBest sorts Schedules.
+            if (GetBest().Fitness >= 0) return false;
             Schedule[] survivors = SelectSurvivors();
-            Schedule[] parents = SelectParents();
-            schedules = [..survivors, ..GenerateOffspring(parents)];
-            MutateAll();
+            Schedule[] offspring = GenerateOffspring(SelectParents(), generation);
+            Schedules = [..survivors, ..offspring];
+            MutateAll(Schedules, generation);
+            foreach (Schedule schedule in Schedules) if (schedule.ModifiedAt == generation) schedule.Fitness = ScheduleEvaluator.Evaluate(schedule);
             return true;
         }
 
-        private void MutateAll()
+        private void MutateAll(Schedule[] schedules, int generation)
         {
             foreach (Schedule schedule in schedules)
             {
-                if (Random.Shared.NextSingle() < mutationChance) schedule.Mutate();
+                if (Random.Shared.NextSingle() < MutationChance)
+                {
+                    schedule.Mutate();
+                    schedule.ModifiedAt = generation;
+                }
             }
         }
         /// <summary>
@@ -69,13 +100,12 @@ namespace CallSchedulerApp
         /// </summary>
         /// <param name="parents"> An even-length array of schedules to be used as parents for recombination (a.k.a. reproduction). </param>
         /// <returns>An array of offspring with length equal to the number of parents.</returns>
-        private Schedule[] GenerateOffspring(Schedule[] parents)
+        private Schedule[] GenerateOffspring(Schedule[] parents, int generation)
         {
             Schedule[] offspring = new Schedule[parents.Length];
             for(int i = 0; i < parents.Length; i += 2)
             {
-                (offspring[i], offspring[i+1]) = Recombine(parents[i], parents[i+1]);
-
+                (offspring[i], offspring[i+1]) = Recombine(parents[i], parents[i+1], generation);
             }
             return offspring;
         }
@@ -90,11 +120,13 @@ namespace CallSchedulerApp
         /// <param name="parent1">The first parent whose genome will be used to create the offspring.</param>
         /// <param name="parent2">The second parent whose genome will be used to create the offspring.</param>
         /// <returns>A tuple containing two offspring, each of which has a genome are similar to both parents.</returns>
-        private (Schedule, Schedule) Recombine(Schedule parent1, Schedule parent2)
+        private (Schedule, Schedule) Recombine(Schedule parent1, Schedule parent2, int generation)
         {
-            Schedule offspring1 = new(parent1.StartDate, parent1.EndDate);
-            Schedule offspring2 = new(parent1.StartDate, parent1.EndDate);
+            Schedule offspring1 = new(parent1.StartDate, parent1.EndDate, DocShiftCounts);
+            Schedule offspring2 = new(parent1.StartDate, parent1.EndDate, DocShiftCounts);
 
+            offspring1.ModifiedAt = generation;
+            offspring2.ModifiedAt = generation;
 
             int crossoverPoint = Random.Shared.Next() % parent1.Shifts.Length;
 
@@ -113,7 +145,7 @@ namespace CallSchedulerApp
             int numSkippedOffspring2 = 0;
             for(int i = crossoverPoint; i < parent1.Shifts.Length; i++)
             {
-                if (offspring2.Shifts.Count(parent1[i]) < NumShiftsPerDoc[parent1[i]])
+                if (offspring2.Shifts.Count(parent1[i]) < DocShiftCounts[parent1[i]])
                 {
                     offspring2[i - numSkippedOffspring2] = parent1[i];
                 } else
@@ -121,7 +153,7 @@ namespace CallSchedulerApp
                     // Console.WriteLine("SKIPPING ADDING {0} TO OFFSPRING A", parent1[i]);
                     numSkippedOffspring2++;
                 }
-                if (offspring1.Shifts.Count(parent2[i]) < NumShiftsPerDoc[parent2[i]])
+                if (offspring1.Shifts.Count(parent2[i]) < DocShiftCounts[parent2[i]])
                 {
                     offspring1[i - numSkippedOffspring1] = parent2[i];
                 } else
@@ -137,13 +169,13 @@ namespace CallSchedulerApp
             {
                 int indexToReAdd1 = parent1.Shifts.Length - numSkippedOffspring1;
                 int indexToReAdd2 = parent1.Shifts.Length - numSkippedOffspring2;
-                if (numSkippedOffspring1 > 0 && offspring1.Shifts.Count(parent2[i]) < NumShiftsPerDoc[parent2[i]])
+                if (numSkippedOffspring1 > 0 && offspring1.Shifts.Count(parent2[i]) < DocShiftCounts[parent2[i]])
                 {
                     // Console.WriteLine("RE-ADDING {0} to Child A", parent2[i]);
                     offspring1[indexToReAdd1] = parent2[i];
                     numSkippedOffspring1--;
                 }
-                if (numSkippedOffspring2 > 0 && offspring2.Shifts.Count(parent1[i]) < NumShiftsPerDoc[parent1[i]])
+                if (numSkippedOffspring2 > 0 && offspring2.Shifts.Count(parent1[i]) < DocShiftCounts[parent1[i]])
                 {
                     // Console.WriteLine("RE-ADDING {0} to Child B", parent1[i]);
                     offspring2[indexToReAdd2] = parent1[i];
@@ -151,8 +183,6 @@ namespace CallSchedulerApp
                 }
             }
             // Console.WriteLine("Children are: ");
-            offspring1.Fitness = ScheduleEvaluator.Evaluate(offspring1);
-            offspring2.Fitness = ScheduleEvaluator.Evaluate(offspring2);
             // Console.WriteLine(offspring1);
             // Console.WriteLine(offspring2);
             return (offspring1, offspring2);
@@ -160,12 +190,12 @@ namespace CallSchedulerApp
 
         private Schedule[] SelectSurvivors()
         {
-            return schedules[^numSurvivors..];
+            return Schedules[^NumSurvivors..];
         }
         private Schedule[] SelectParents()
         {
-            int numParents = schedules.Length - numSurvivors;
-            return schedules[^numParents..];
+            int numParents = Schedules.Length - NumSurvivors;
+            return Schedules[^numParents..];
         }
 
     }
