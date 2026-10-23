@@ -20,12 +20,12 @@ namespace CallSchedulerApp.Schedules
             Require24
         };
         private const int NightThenDayPenalty = -800;
-        private const int MoreThanOneDayPerFivePenalty = -3500;
+        private const int TwiceIn5DaysPenalty = -3500;
         private const int OperatingPenalty = -1000;
         private const int ReservedDayPenalty = -1200;
-        private const int PreferredDayBonus = 100;
+        private const int PreferredDayBonus = 50;
         private const int PreferredOffDayPenalty = -200;
-        private const int MoreWeekendsPenalty = -5500;
+        private const int MoreWeekendsPenalty = -6500;
         private const int Prefer12Penalty = -200;
         private const int Require12Penalty = -3600;
         internal static int Evaluate(Schedule schedule, DebugLevel debug = 0)
@@ -55,21 +55,21 @@ namespace CallSchedulerApp.Schedules
                     (i < schedule.Shifts.Length - 10 && schedule[i] == schedule[i+10])
                     )
                 {
-                    fitness += MoreThanOneDayPerFivePenalty;
-                    if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} works twice in a 5-day span.", schedule.StartDate.AddDays(i), schedule[i]);
+                    fitness += TwiceIn5DaysPenalty;
+                    if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} works twice in a 5-day span.", schedule.StartDate.AddDays(i / 2), schedule[i]);
                 }
             }
             Dictionary<Doctor, float> weekendShiftFraction = [];
             foreach (Doctor doctor in Enum.GetValues<Doctor>()[1..]) weekendShiftFraction[doctor] = 0;
             for (int i = 0; i < schedule.Shifts.Length; i += 2)
             {
-                DateOnly day = schedule.StartDate.AddDays(i / 2);
-                if (day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday)
+                DateOnly date = schedule.StartDate.AddDays(i / 2);
+                if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
                 {
                     weekendShiftFraction[schedule[i]] += 1f / schedule.DocShiftCounts[schedule[i]];
                     weekendShiftFraction[schedule[i+1]] += 1f / schedule.DocShiftCounts[schedule[i+1]];
                 }
-                if (day.DayOfWeek == DayOfWeek.Sunday) i += 10; // jumps ahead to next saturday
+                if (date.DayOfWeek == DayOfWeek.Sunday) i += 10; // jumps ahead to next saturday
             }
             float weekendFractionDifference = weekendShiftFraction.Values.Max() - weekendShiftFraction.Values.Min();
             fitness += (int)(MoreWeekendsPenalty * weekendFractionDifference);
@@ -291,8 +291,14 @@ namespace CallSchedulerApp.Schedules
                 Preference.Prefer24,
                 date, isDay, previous, debug
             );
-            if (date.DayOfWeek == DayOfWeek.Tuesday) numGansTuesdaysThisMonth++;
-            if (numGansTuesdaysThisMonth > 2) happiness += ReservedDayPenalty; 
+            if (date.DayOfWeek == DayOfWeek.Tuesday) {
+                numGansTuesdaysThisMonth++;
+                if (numGansTuesdaysThisMonth > 2)
+                {
+                    happiness += ReservedDayPenalty;
+                    if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, Gans is working on a Tuesday after already working two Tuesdays that month.", date);
+                }
+            }
             return happiness;
         }
 

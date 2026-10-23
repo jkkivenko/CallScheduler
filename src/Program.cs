@@ -5,12 +5,12 @@ namespace CallSchedulerApp
     public static class Program
     {
         private static readonly DateOnly StartDate = new(2027, 01, 01);
-        private static readonly DateOnly EndDate = new(2027, 04, 01);
+        private static readonly DateOnly EndDate = new(2027, 05, 01);
         private const int MaxGenerations = 1_000_000;
-        private const int DisplayEveryNGenerations = 1_000;
+        private const int DisplayEveryNGenerations = 2_000;
         private const int NumSurvivors = 6;
         private const int NumSchedules = 8;
-        private const float MutationChance = 0.125f;
+        private const float MutationChance = 0.1f;
         private static readonly Dictionary<Doctor, float> DocShiftLoads = new()
             {
                 {Doctor.Cram, 1},
