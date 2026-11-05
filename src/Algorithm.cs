@@ -74,7 +74,7 @@ namespace CallSchedulerApp
         public bool RunGeneration(int generation)
         {
             // note GetBest sorts Schedules.
-            if (GetBest().Fitness >= 0) return false;
+            if (GetBest().Fitness >= -1500) return false;
             Schedule[] survivors = SelectSurvivors();
             Schedule[] offspring = GenerateOffspring(SelectParents(), generation);
             Schedules = [..survivors, ..offspring];

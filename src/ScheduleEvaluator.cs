@@ -19,19 +19,25 @@ namespace CallSchedulerApp.Schedules
             Prefer24,
             Require24
         };
+        private const float TwoSevenths = 0.28571428571f;
         private const int NightThenDayPenalty = -800;
-        private const int TwiceIn5DaysPenalty = -3500;
+        private const int TwiceIn5DaysPenalty = -100;
+        private const int TwiceIn4DaysPenalty = -300;
+        private const int TwiceIn3DaysPenalty = -400;
+        private const int TwiceIn2DaysPenalty = -800;
         private const int OperatingPenalty = -1000;
         private const int ReservedDayPenalty = -1200;
         private const int PreferredDayBonus = 50;
         private const int PreferredOffDayPenalty = -200;
-        private const int MoreWeekendsPenalty = -6500;
+        private const int MoreWeekendsPenalty = -650;
+        private const int MoreDaytimePenalty = -650;
         private const int Prefer12Penalty = -200;
         private const int Require12Penalty = -3600;
         internal static int Evaluate(Schedule schedule, DebugLevel debug = 0)
         {
             int fitness = 0;
-            // Rule 1: Nobody works night and then day
+
+            // Rule: Nobody works a night shift then a day shift
             for (int i = 1; i < schedule.Shifts.Length - 1; i += 2)
             {
                 if (schedule[i] == schedule[i+1])
@@ -40,53 +46,89 @@ namespace CallSchedulerApp.Schedules
                     if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} works in the evening and the following morning.", schedule.StartDate.AddDays(i), schedule[i]);
                 }
             }
-            // Rule 2: Nobody works twice in a 5-day span (working two calls directly in a row is acceptable) 
+
+            // Rule: Disincentivize two shifts in close proximity (working two shifts directly in a row is acceptable as long as it does not violate the above) 
             for (int i = 0; i < schedule.Shifts.Length - 2; i++)
             {
+                // Check if doctor works twice in two days (i.e. the next three shifts)
                 if (
-                    schedule[i] == schedule[i+2] ||
-                    (i < schedule.Shifts.Length - 3 && schedule[i] == schedule[i+3]) ||
+                    (schedule[i] == schedule[i+2]) ||
+                    (i < schedule.Shifts.Length - 3 && schedule[i] == schedule[i+3])
+                    )
+                {
+                    fitness += TwiceIn2DaysPenalty;
+                    if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} works twice in a 2-day span.", schedule.StartDate.AddDays(i / 2), schedule[i]);
+                }
+                else if (
                     (i < schedule.Shifts.Length - 4 && schedule[i] == schedule[i+4]) ||
-                    (i < schedule.Shifts.Length - 5 && schedule[i] == schedule[i+5]) ||
+                    (i < schedule.Shifts.Length - 5 && schedule[i] == schedule[i+5])
+                    )
+                {
+                    fitness += TwiceIn3DaysPenalty;
+                    if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} works twice in a 3-day span.", schedule.StartDate.AddDays(i / 2), schedule[i]);
+                }
+                else if (
                     (i < schedule.Shifts.Length - 6 && schedule[i] == schedule[i+6]) ||
-                    (i < schedule.Shifts.Length - 7 && schedule[i] == schedule[i+7]) ||
+                    (i < schedule.Shifts.Length - 7 && schedule[i] == schedule[i+7])
+                    )
+                {
+                    fitness += TwiceIn4DaysPenalty;
+                    if (debug >= DebugLevel.Violations) Print.PrintOrange("On {0}, {1} works twice in a 4-day span.", schedule.StartDate.AddDays(i / 2), schedule[i]);
+                }
+                else if (
                     (i < schedule.Shifts.Length - 8 && schedule[i] == schedule[i+8]) ||
-                    (i < schedule.Shifts.Length - 9 && schedule[i] == schedule[i+9]) ||
-                    (i < schedule.Shifts.Length - 10 && schedule[i] == schedule[i+10])
+                    (i < schedule.Shifts.Length - 9 && schedule[i] == schedule[i+9])
                     )
                 {
                     fitness += TwiceIn5DaysPenalty;
-                    if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} works twice in a 5-day span.", schedule.StartDate.AddDays(i / 2), schedule[i]);
+                    if (debug >= DebugLevel.Violations) Print.PrintOrange("On {0}, {1} works twice in a 5-day span.", schedule.StartDate.AddDays(i / 2), schedule[i]);
                 }
             }
-            Dictionary<Doctor, float> weekendShiftFraction = [];
-            foreach (Doctor doctor in Enum.GetValues<Doctor>()[1..]) weekendShiftFraction[doctor] = 0;
+
+            // Rule: Every doctor must work 50% day call and 50% night call.
+            Dictionary<Doctor, int> numDayShifts = [];
+            foreach (Doctor doctor in Enum.GetValues<Doctor>()[1..]) numDayShifts[doctor] = 0;
+            for (int i = 0; i < schedule.Shifts.Length; i += 2)
+            {
+                numDayShifts[schedule[i]]++;
+            }
+            if (debug > DebugLevel.None) Console.WriteLine("~~~~~ Day Fractions ~~~~~");
+            foreach (KeyValuePair<Doctor, int> kvp in numDayShifts)
+            {
+                // Penalty is equal to the square error of the doctor's day fraction compared to 50%
+                int idealNumber = (int)Math.Round(schedule.DocShiftCounts[kvp.Key] * 0.5);
+                if (Math.Abs(kvp.Value - idealNumber) > 1)
+                {
+                    fitness += (int)(MoreDaytimePenalty * Math.Pow(kvp.Value - idealNumber, 2));
+                    if (debug > DebugLevel.None) Console.WriteLine("{0} worked {1} day shifts but should work {2}", kvp.Key, kvp.Value, idealNumber);
+                }
+            }
+
+            // Rule: Every doctor should work approximately two sevenths of their shifts on the weekend.
+            Dictionary<Doctor, int> numWeekendShifts = [];
+            foreach (Doctor doctor in Enum.GetValues<Doctor>()[1..]) numWeekendShifts[doctor] = 0;
             for (int i = 0; i < schedule.Shifts.Length; i += 2)
             {
                 DateOnly date = schedule.StartDate.AddDays(i / 2);
                 if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
                 {
-                    weekendShiftFraction[schedule[i]] += 1f / schedule.DocShiftCounts[schedule[i]];
-                    weekendShiftFraction[schedule[i+1]] += 1f / schedule.DocShiftCounts[schedule[i+1]];
+                    numWeekendShifts[schedule[i]]++;
+                    numWeekendShifts[schedule[i+1]]++;
                 }
                 if (date.DayOfWeek == DayOfWeek.Sunday) i += 10; // jumps ahead to next saturday
             }
-            float weekendFractionDifference = weekendShiftFraction.Values.Max() - weekendShiftFraction.Values.Min();
-            fitness += (int)(MoreWeekendsPenalty * weekendFractionDifference);
-            if (weekendFractionDifference > 0.3 && debug >= DebugLevel.Violations)
+            if (debug > DebugLevel.None) Console.WriteLine("~~~ Weekend Fractions ~~~");
+            foreach (KeyValuePair<Doctor, int> kvp in numWeekendShifts)
+            {
+                // Penalty is equal to the square error of the doctor's weekend fraction compared to 2/7
+                int idealNumber = (int)Math.Round(schedule.DocShiftCounts[kvp.Key] * TwoSevenths);
+                if (Math.Abs(kvp.Value - idealNumber) > 1)
                 {
-                    Print.PrintRed("One doctor has {0}% weekend shifts while another has {1}%.", weekendShiftFraction.Values.Max() * 100, weekendShiftFraction.Values.Min() * 100);
-                    foreach (KeyValuePair<Doctor, float> kvp in weekendShiftFraction) Print.PrintRed(kvp.ToString());
+                    fitness += (int)(MoreWeekendsPenalty * Math.Pow(kvp.Value - idealNumber, 2));
+                    if (debug > DebugLevel.None) Console.WriteLine("{0} worked {1} weekend shifts but should work {2}", kvp.Key, kvp.Value, idealNumber);
                 }
-            else if (weekendFractionDifference > 0.1 && debug >= DebugLevel.Problems)
-            {
-                Print.PrintOrange("One doctor has {0}% weekend shifts while another has {1}%.", weekendShiftFraction.Values.Max() * 100, weekendShiftFraction.Values.Min() * 100);
-                foreach (KeyValuePair<Doctor, float> kvp in weekendShiftFraction) Print.PrintOrange(kvp.ToString());
             }
-            else if (debug >= DebugLevel.All)
-            {
-                foreach (KeyValuePair<Doctor, float> kvp in weekendShiftFraction) Console.WriteLine(kvp.ToString());
-            }
+
             // Evaluate every doctor's individual preferences
             for(int i = 0; i < schedule.Shifts.Length; i++)
             {
@@ -103,30 +145,30 @@ namespace CallSchedulerApp.Schedules
                 else if (schedule[i] == Doctor.Tai)       fitness += EvaluateTai(date, isDay, previous, debug);
                 else if (schedule[i] == Doctor.Badmos)    fitness += EvaluateBadmos(date, isDay, previous, debug);
                 else if (schedule[i] == Doctor.Jolliffe)  fitness += EvaluateJolliffe(date, isDay, previous, debug);
-                else if (schedule[i] == Doctor.Proisky)   fitness += EvaluateProisky(date, isDay, previous, debug);
+                else if (schedule[i] == Doctor.Proisky)   fitness += EvaluatePorisky(date, isDay, previous, debug);
                 else if (schedule[i] == Doctor.Brown)     fitness += EvaluateBrown(date, isDay, previous, debug);
                 else if (schedule[i] == Doctor.Chan)      fitness += EvaluateChan(date, isDay, previous, debug);
                 else if (schedule[i] == Doctor.Iancu)     fitness += EvaluateIancu(date, isDay, previous, debug);
-                else if (schedule[i] == Doctor.Smith)     fitness += EvaluateSmith(date, isDay, previous, debug);
+                // else if (schedule[i] == Doctor.Smith)     fitness += EvaluateSmith(date, isDay, previous, debug);
             }
             return fitness;
         }
 
-        private static int EvaluateSmith(DateOnly date, bool isDay, Doctor previous, DebugLevel debug) =>
-            StandardHappiness
-            (
-                Doctor.Smith,
-                [2, 4],
-                [DayOfWeek.Tuesday],
-                [],
-                [],
-                [],
-                [],
-                [],
-                [],
-                Preference.Prefer12,
-                date, isDay, previous, debug
-            );
+        // private static int EvaluateSmith(DateOnly date, bool isDay, Doctor previous, DebugLevel debug) =>
+        //     StandardHappiness
+        //     (
+        //         Doctor.Smith,
+        //         [2, 4],
+        //         [DayOfWeek.Tuesday],
+        //         [],
+        //         [],
+        //         [],
+        //         [],
+        //         [],
+        //         [],
+        //         Preference.Prefer12,
+        //         date, isDay, previous, debug
+        //     );
 
         private static int EvaluateIancu(DateOnly date, bool isDay, Doctor previous, DebugLevel debug) =>
             StandardHappiness
@@ -140,7 +182,7 @@ namespace CallSchedulerApp.Schedules
                 [],
                 [],
                 [],
-                Preference.Prefer12,
+                Preference.Require12,
                 date, isDay, previous, debug
             ) +
             ORHappiness
@@ -188,7 +230,7 @@ namespace CallSchedulerApp.Schedules
                 date, isDay, debug
             );
 
-        private static int EvaluateProisky(DateOnly date, bool isDay, Doctor previous, DebugLevel debug) =>
+        private static int EvaluatePorisky(DateOnly date, bool isDay, Doctor previous, DebugLevel debug) =>
             StandardHappiness
             (
                 Doctor.Proisky,
@@ -248,11 +290,11 @@ namespace CallSchedulerApp.Schedules
                 Doctor.Tai,
                 [1],
                 [DayOfWeek.Friday],
-                [],
-                [],
-                [],
-                [],
                 [DayOfWeek.Wednesday],
+                [DayOfWeek.Wednesday],
+                [],
+                [],
+                [],
                 [],
                 Preference.Prefer24,
                 date, isDay, previous, debug
@@ -287,7 +329,7 @@ namespace CallSchedulerApp.Schedules
                 [DayOfWeek.Tuesday],
                 [],
                 [DayOfWeek.Saturday],
-                [],
+                [DayOfWeek.Saturday],
                 Preference.Prefer24,
                 date, isDay, previous, debug
             );
@@ -313,7 +355,7 @@ namespace CallSchedulerApp.Schedules
                 [],
                 [],
                 [DayOfWeek.Saturday],
-                [],
+                [DayOfWeek.Saturday],
                 Preference.Require12,
                 date, isDay, previous, debug
             ) +
@@ -321,6 +363,12 @@ namespace CallSchedulerApp.Schedules
             (
                 [2, 4],
                 [DayOfWeek.Thursday],
+                date, isDay, debug
+            ) +
+            ORHappiness
+            (
+                [4],
+                [DayOfWeek.Friday],
                 date, isDay, debug
             );
 
@@ -346,12 +394,12 @@ namespace CallSchedulerApp.Schedules
                 Doctor.Frecker,
                 [1, 2],
                 [DayOfWeek.Thursday],
-                [DayOfWeek.Wednesday, DayOfWeek.Friday],
-                [DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday],
+                [DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Friday],
+                [DayOfWeek.Tuesday, DayOfWeek.Thursday],
                 [],
                 [],
                 [DayOfWeek.Saturday],
-                [],
+                [DayOfWeek.Saturday, DayOfWeek.Friday],
                 Preference.Require12,
                 date, isDay, previous, debug
             );
@@ -362,12 +410,12 @@ namespace CallSchedulerApp.Schedules
                 Doctor.Raymond,
                 [],
                 [],
-                [DayOfWeek.Thursday, DayOfWeek.Friday],
+                [DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Tuesday],
                 [DayOfWeek.Thursday],
                 [],
                 [DayOfWeek.Monday],
                 [DayOfWeek.Saturday],
-                [],
+                [DayOfWeek.Wednesday],
                 Preference.Require12,
                 date, isDay, previous, debug
             );
@@ -383,7 +431,7 @@ namespace CallSchedulerApp.Schedules
                 [],
                 [],
                 [DayOfWeek.Saturday],
-                [],
+                [DayOfWeek.Saturday],
                 Preference.Prefer12,
                 date, isDay, previous, debug
             );

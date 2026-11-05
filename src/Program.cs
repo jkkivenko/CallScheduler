@@ -10,7 +10,7 @@ namespace CallSchedulerApp
         private const int DisplayEveryNGenerations = 2_000;
         private const int NumSurvivors = 6;
         private const int NumSchedules = 8;
-        private const float MutationChance = 0.1f;
+        private const float MutationChance = 0.15f;
         private static readonly Dictionary<Doctor, float> DocShiftLoads = new()
             {
                 {Doctor.Cram, 1},
@@ -26,7 +26,7 @@ namespace CallSchedulerApp
                 {Doctor.Brown, 1},
                 {Doctor.Chan, 0.5f},
                 {Doctor.Iancu, 1},
-                {Doctor.Smith, 1}
+                // {Doctor.Smith, 1}
             };
         static void Main(string[] args)
         {
