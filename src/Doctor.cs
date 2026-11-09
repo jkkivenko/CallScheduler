@@ -2,7 +2,6 @@ namespace CallSchedulerApp
 {
     public enum Doctor
     {
-        None,
         Cram,
         Raymond,
         Frecker,

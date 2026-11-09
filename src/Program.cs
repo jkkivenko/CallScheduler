@@ -11,23 +11,22 @@ namespace CallSchedulerApp
         private const int NumSurvivors = 6;
         private const int NumSchedules = 8;
         private const float MutationChance = 0.15f;
-        private static readonly Dictionary<Doctor, float> DocShiftLoads = new()
-            {
-                {Doctor.Cram,      1},
-                {Doctor.Raymond,   1},
-                {Doctor.Frecker,   1},
-                {Doctor.Mackenzie, 1},
-                {Doctor.Aggarwal,  1},
-                {Doctor.Gans,      1},
-                {Doctor.Tai,       1},
-                {Doctor.Badmos,    1},
-                {Doctor.Jolliffe,  1},
-                {Doctor.Porisky,   1},
-                {Doctor.Brown,     1},
-                {Doctor.Chan,      0.5f},
-                {Doctor.Iancu,     1},
-                // {Doctor.Smith, 1}
-            };
+        private static readonly float[] DocShiftLoads =
+            [
+                1,     // Cram
+                1,     // Raymond
+                1,     // Frecker
+                1,     // Mackenzie
+                1,     // Aggarwal
+                1,     // Gans
+                1,     // Tai
+                1,     // Badmos
+                1,     // Jolliffe
+                1,     // Porisky
+                1,     // Brown
+                0.5f,  // Chan
+                1,     // Iancu
+            ];
         static void Main(string[] args)
         {
             EvolutionaryAlgorithm algo = new(StartDate, EndDate, DocShiftLoads, NumSchedules, NumSurvivors, MutationChance);

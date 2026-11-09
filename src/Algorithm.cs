@@ -9,8 +9,8 @@ namespace CallSchedulerApp
         private Schedule[] Schedules { get; set; }
         private int NumSurvivors { get; }
         private float MutationChance { get; }
-        private Dictionary<Doctor, int> DocShiftCounts { get; }
-        public EvolutionaryAlgorithm(DateOnly startDate, DateOnly endDate, Dictionary<Doctor, float> docShiftLoads, int numSchedules, int numSurvivors, float mutationChance)
+        private int[] DocShiftCounts { get; }
+        public EvolutionaryAlgorithm(DateOnly startDate, DateOnly endDate, float[] docShiftLoads, int numSchedules, int numSurvivors, float mutationChance)
         {
             StartDate = startDate;
             EndDate = endDate;
@@ -20,28 +20,28 @@ namespace CallSchedulerApp
             DocShiftCounts = GetShiftCounts(docShiftLoads);
             Initialize();
         }
-        private Dictionary<Doctor, int> GetShiftCounts(Dictionary<Doctor, float> docShiftLoads)
+        private int[] GetShiftCounts(float[] docShiftLoads)
         {
             // First we assign each Doctor a number of shifts according to the total number of shifts and their relative shiftload.
-            Dictionary<Doctor, int> shiftCounts = [];
+            int[] shiftCounts = new int[docShiftLoads.Length];
             float totalShiftLoad = 0;
-            foreach (float shiftLoad in docShiftLoads.Values)
+            foreach (float shiftLoad in docShiftLoads)
             {
                 totalShiftLoad += shiftLoad;
             }
             int numShiftsMissing = 2 * (EndDate.DayNumber - StartDate.DayNumber);
-            foreach (KeyValuePair<Doctor, float> kvp in docShiftLoads)
+            for (int i = 0; i < docShiftLoads.Length; i++)
             {
-                int numShifts = (int)(kvp.Value / totalShiftLoad * 2 * (EndDate.DayNumber - StartDate.DayNumber));
-                shiftCounts[kvp.Key] = numShifts;
+                int numShifts = (int)(docShiftLoads[i] / totalShiftLoad * 2 * (EndDate.DayNumber - StartDate.DayNumber));
+                shiftCounts[i] = numShifts;
                 numShiftsMissing -= numShifts;
             }
             // Due to rounding, this can cause the number of assigned shifts to be slightly too low. We add more shifts according to a random lottery to fill up the gaps.
-            Doctor[] doctorOrder = [..docShiftLoads.Keys.Shuffle()];
+            Doctor[] doctorOrder = [..Enum.GetValues<Doctor>().Shuffle()];
             int numAdditionaShifts = 0;
             while (numShiftsMissing - numAdditionaShifts > 0)
             {
-                shiftCounts[doctorOrder[numAdditionaShifts]] += 1;
+                shiftCounts[(int)doctorOrder[numAdditionaShifts]] += 1;
                 numAdditionaShifts++;
             }
             return shiftCounts;
@@ -154,7 +154,7 @@ namespace CallSchedulerApp
             int numSkippedOffspring2 = 0;
             for(int i = crossoverPoint; i < parent1.NumShifts; i++)
             {
-                if (offspring2.Shifts.Count(parent1[i]) < DocShiftCounts[parent1[i]])
+                if (offspring2.Shifts.Count(parent1[i]) < DocShiftCounts[(int)parent1[i]])
                 {
                     offspring2[i - numSkippedOffspring2] = parent1[i];
                 } else
@@ -162,7 +162,7 @@ namespace CallSchedulerApp
                     // Console.WriteLine("SKIPPING ADDING {0} TO OFFSPRING A", parent1[i]);
                     numSkippedOffspring2++;
                 }
-                if (offspring1.Shifts.Count(parent2[i]) < DocShiftCounts[parent2[i]])
+                if (offspring1.Shifts.Count(parent2[i]) < DocShiftCounts[(int)parent2[i]])
                 {
                     offspring1[i - numSkippedOffspring1] = parent2[i];
                 } else
@@ -178,13 +178,13 @@ namespace CallSchedulerApp
             {
                 int indexToReAdd1 = parent1.NumShifts - numSkippedOffspring1;
                 int indexToReAdd2 = parent1.NumShifts - numSkippedOffspring2;
-                if (numSkippedOffspring1 > 0 && offspring1.Shifts.Count(parent2[i]) < DocShiftCounts[parent2[i]])
+                if (numSkippedOffspring1 > 0 && offspring1.Shifts.Count(parent2[i]) < DocShiftCounts[(int)parent2[i]])
                 {
                     // Console.WriteLine("RE-ADDING {0} to Child A", parent2[i]);
                     offspring1[indexToReAdd1] = parent2[i];
                     numSkippedOffspring1--;
                 }
-                if (numSkippedOffspring2 > 0 && offspring2.Shifts.Count(parent1[i]) < DocShiftCounts[parent1[i]])
+                if (numSkippedOffspring2 > 0 && offspring2.Shifts.Count(parent1[i]) < DocShiftCounts[(int)parent1[i]])
                 {
                     // Console.WriteLine("RE-ADDING {0} to Child B", parent1[i]);
                     offspring2[indexToReAdd2] = parent1[i];

@@ -23,7 +23,7 @@ namespace CallSchedulerApp
         public static int CountAssignedViolations(Schedule schedule, DebugLevel debug)
         {
             int numViolations = 0;
-            for (int i = 0; i < schedule.NumShifts; i++) if (AssignedShifts[i] != Doctor.None && AssignedShifts[i] != schedule[i])
+            for (int i = 0; i < schedule.NumShifts; i++) if (AssignedShifts[i] != (Doctor)(-1) && AssignedShifts[i] != schedule[i])
             {
                 if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} is working a shift specially assigned to {2}.", schedule.StartDate.AddDays(i / 2), schedule[i], AssignedShifts[i]);
                 numViolations++;

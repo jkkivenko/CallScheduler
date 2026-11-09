@@ -44,7 +44,7 @@ namespace CallSchedulerApp.Schedules
                 if (schedule[i] == schedule[i+1])
                 {
                     fitness += NightThenDayPenalty;
-                    if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} works in the evening and the following morning.", schedule.StartDate.AddDays(i), schedule[i]);
+                    if (debug >= DebugLevel.Violations) Print.PrintRed("On {0}, {1} works in the evening and the following morning.", schedule.StartDate.AddDays(i / 2), schedule[i]);
                 }
             }
 
@@ -87,46 +87,44 @@ namespace CallSchedulerApp.Schedules
             }
 
             // Rule: Every doctor must work 50% day call and 50% night call.
-            Dictionary<Doctor, int> numDayShifts = [];
-            foreach (Doctor doctor in Enum.GetValues<Doctor>()[1..]) numDayShifts[doctor] = 0;
+            int[] numDayShifts = new int[Enum.GetValues<Doctor>().Length];
             for (int i = 0; i < schedule.NumShifts; i += 2)
             {
-                numDayShifts[schedule[i]]++;
+                numDayShifts[(int)schedule[i]]++;
             }
             if (debug > DebugLevel.None) Console.WriteLine("~~~~~ Day Fractions ~~~~~");
-            foreach (KeyValuePair<Doctor, int> kvp in numDayShifts)
+            for (int i = 0; i < numDayShifts.Length; i++)
             {
                 // Penalty is equal to the square error of the doctor's day fraction compared to 50%
-                int idealNumber = (int)Math.Round(schedule.DocShiftCounts[kvp.Key] * 0.5);
-                if (Math.Abs(kvp.Value - idealNumber) > 1)
+                int idealNumber = (int)Math.Round(schedule.DocShiftCounts[i] * 0.5);
+                if (Math.Abs(numDayShifts[i] - idealNumber) > 1)
                 {
-                    fitness += (int)(MoreDaytimePenalty * Math.Pow(kvp.Value - idealNumber, 2));
-                    if (debug > DebugLevel.None) Console.WriteLine("{0} worked {1} day shifts but should work {2}", kvp.Key, kvp.Value, idealNumber);
+                    fitness += (int)(MoreDaytimePenalty * Math.Pow(numDayShifts[i] - idealNumber, 2));
+                    if (debug > DebugLevel.None) Console.WriteLine("{0} worked {1} day shifts but should work {2}", (Doctor)i, numDayShifts[i], idealNumber);
                 }
             }
 
             // Rule: Every doctor should work approximately two sevenths of their shifts on the weekend.
-            Dictionary<Doctor, int> numWeekendShifts = [];
-            foreach (Doctor doctor in Enum.GetValues<Doctor>()[1..]) numWeekendShifts[doctor] = 0;
+            int[] numWeekendShifts = new int[Enum.GetValues<Doctor>().Length];
             for (int i = 0; i < schedule.NumShifts; i += 2)
             {
                 DateOnly date = schedule.StartDate.AddDays(i / 2);
                 if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
                 {
-                    numWeekendShifts[schedule[i]]++;
-                    numWeekendShifts[schedule[i+1]]++;
+                    numWeekendShifts[(int)schedule[i]]++;
+                    numWeekendShifts[(int)schedule[i+1]]++;
                 }
                 if (date.DayOfWeek == DayOfWeek.Sunday) i += 10; // jumps ahead to next saturday
             }
             if (debug > DebugLevel.None) Console.WriteLine("~~~ Weekend Fractions ~~~");
-            foreach (KeyValuePair<Doctor, int> kvp in numWeekendShifts)
+            for (int i = 0; i < numWeekendShifts.Length; i++)
             {
                 // Penalty is equal to the square error of the doctor's weekend fraction compared to 2/7
-                int idealNumber = (int)Math.Round(schedule.DocShiftCounts[kvp.Key] * TwoSevenths);
-                if (Math.Abs(kvp.Value - idealNumber) > 1)
+                int idealNumber = (int)Math.Round(schedule.DocShiftCounts[i] * TwoSevenths);
+                if (Math.Abs(numWeekendShifts[i] - idealNumber) > 1)
                 {
-                    fitness += (int)(MoreWeekendsPenalty * Math.Pow(kvp.Value - idealNumber, 2));
-                    if (debug > DebugLevel.None) Console.WriteLine("{0} worked {1} weekend shifts but should work {2}", kvp.Key, kvp.Value, idealNumber);
+                    fitness += (int)(MoreWeekendsPenalty * Math.Pow(numWeekendShifts[i] - idealNumber, 2));
+                    if (debug > DebugLevel.None) Console.WriteLine("{0} worked {1} weekend shifts but should work {2}", (Doctor)i, numWeekendShifts[i], idealNumber);
                 }
             }
             if (debug > DebugLevel.None) Console.WriteLine("~~~~~~~~~~~~~~~~~~~~~~~~~");
@@ -137,7 +135,7 @@ namespace CallSchedulerApp.Schedules
             for(int i = 0; i < schedule.NumShifts; i++)
             {
                 bool isDay = i % 2 == 0;
-                Doctor previous = i != 0 ? schedule[i-1] : Doctor.None;
+                Doctor previous = i != 0 ? schedule[i-1] : (Doctor)(-1);
                 DateOnly date = schedule.StartDate.AddDays(i / 2);
                 if (date.Day == 1 && isDay) numGansTuesdaysThisMonth = 0;
                 if      (schedule[i] == Doctor.Cram)      fitness += EvaluateCram(date, isDay, previous, debug);

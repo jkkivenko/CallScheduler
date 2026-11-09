@@ -3,13 +3,13 @@ namespace CallSchedulerApp.Schedules
     /// <summary>
     /// A class representing a 4-month call schedule. Each day is associated with two call shifts. 
     /// </summary>
-    public class Schedule(DateOnly startDate, DateOnly endDate, Dictionary<Doctor, int> docShiftCounts) : IComparable<Schedule>
+    public class Schedule(DateOnly startDate, DateOnly endDate, int[] docShiftCounts) : IComparable<Schedule>
     {
         public DateOnly StartDate { get; set; } = startDate;
         public DateOnly EndDate { get; set; } = endDate;
         public int ModifiedAt { get; set; }
         public int Fitness { get; set; }
-        public Dictionary<Doctor, int> DocShiftCounts { get; set; } = docShiftCounts;
+        public int[] DocShiftCounts { get; set; } = docShiftCounts;
         internal int NumShifts { get; set; } = (endDate.DayNumber - startDate.DayNumber) * 2;
         internal Doctor[] Shifts { get; set; } = new Doctor[(endDate.DayNumber - startDate.DayNumber) * 2];
         /// <summary>
@@ -20,13 +20,13 @@ namespace CallSchedulerApp.Schedules
         {
             // First verify that the number of shifts to be assigned to each doctor adds up to the total number of shifts to be assigned.
             int numTotalShifts = 0;
-            foreach (int value in DocShiftCounts.Values) numTotalShifts += value;
+            foreach (int value in DocShiftCounts) numTotalShifts += value;
             if (numTotalShifts != NumShifts) throw new ArgumentException("The number of shifts assigned to all doctors is invalid for this schedule length.");
-            int i = 0;
-            foreach (KeyValuePair<Doctor, int> kvp in DocShiftCounts)
+            int accum = 0;
+            for (int i = 0; i < DocShiftCounts.Length; i++)
             {
-                Array.Fill(Shifts, kvp.Key, i, kvp.Value);
-                i += kvp.Value;
+                Array.Fill(Shifts, (Doctor)i, accum, DocShiftCounts[i]);
+                accum += DocShiftCounts[i];
             }
         }
         /// <summary>
