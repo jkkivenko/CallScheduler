@@ -13,19 +13,19 @@ namespace CallSchedulerApp
         private const float MutationChance = 0.15f;
         private static readonly Dictionary<Doctor, float> DocShiftLoads = new()
             {
-                {Doctor.Cram, 1},
-                {Doctor.Raymond, 1},
-                {Doctor.Frecker, 1},
+                {Doctor.Cram,      1},
+                {Doctor.Raymond,   1},
+                {Doctor.Frecker,   1},
                 {Doctor.Mackenzie, 1},
-                {Doctor.Aggarwal, 1},
-                {Doctor.Gans, 1},
-                {Doctor.Tai, 1},
-                {Doctor.Badmos, 1},
-                {Doctor.Jolliffe, 1},
-                {Doctor.Proisky, 1},
-                {Doctor.Brown, 1},
-                {Doctor.Chan, 0.5f},
-                {Doctor.Iancu, 1},
+                {Doctor.Aggarwal,  1},
+                {Doctor.Gans,      1},
+                {Doctor.Tai,       1},
+                {Doctor.Badmos,    1},
+                {Doctor.Jolliffe,  1},
+                {Doctor.Porisky,   1},
+                {Doctor.Brown,     1},
+                {Doctor.Chan,      0.5f},
+                {Doctor.Iancu,     1},
                 // {Doctor.Smith, 1}
             };
         static void Main(string[] args)
@@ -38,7 +38,7 @@ namespace CallSchedulerApp
             {
                 if (generation % DisplayEveryNGenerations == 0)
                 {
-                    Console.WriteLine("Generation {0} Best Fitness: {1}", generation, ScheduleEvaluator.Evaluate(algo.GetBest(), DebugLevel.Problems));
+                    Console.WriteLine("Generation {0} Best Fitness: {1}", generation, ScheduleEvaluator.Evaluate(algo.GetBest(), DebugLevel.Violations));
                 }
                 shouldContinue = algo.RunGeneration(generation);
             }

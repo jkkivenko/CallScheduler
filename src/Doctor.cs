@@ -12,7 +12,7 @@ namespace CallSchedulerApp
         Tai,
         Badmos,
         Jolliffe,
-        Proisky,
+        Porisky,
         Brown,
         Chan,
         Iancu,

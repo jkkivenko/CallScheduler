@@ -128,7 +128,16 @@ namespace CallSchedulerApp
             offspring1.ModifiedAt = generation;
             offspring2.ModifiedAt = generation;
 
-            int crossoverPoint = Random.Shared.Next() % parent1.Shifts.Length;
+            // Shortcut recombination for testing - still works, need to reconsider recombination strategies
+            // for (int i = 0; i < parent1.NumShifts; i++)
+            // {
+            //     offspring1[i] = parent1[i];
+            //     offspring2[i] = parent2[i];
+            // }
+
+            // return (offspring1, offspring2);
+
+            int crossoverPoint = Random.Shared.Next() % parent1.NumShifts;
 
             // Console.WriteLine("Parents are:");
             // Console.WriteLine(parent1);
@@ -143,7 +152,7 @@ namespace CallSchedulerApp
 
             int numSkippedOffspring1 = 0;
             int numSkippedOffspring2 = 0;
-            for(int i = crossoverPoint; i < parent1.Shifts.Length; i++)
+            for(int i = crossoverPoint; i < parent1.NumShifts; i++)
             {
                 if (offspring2.Shifts.Count(parent1[i]) < DocShiftCounts[parent1[i]])
                 {
@@ -167,8 +176,8 @@ namespace CallSchedulerApp
             // Console.WriteLine(offspring2);
             for (int i = 0; i < crossoverPoint; i++)
             {
-                int indexToReAdd1 = parent1.Shifts.Length - numSkippedOffspring1;
-                int indexToReAdd2 = parent1.Shifts.Length - numSkippedOffspring2;
+                int indexToReAdd1 = parent1.NumShifts - numSkippedOffspring1;
+                int indexToReAdd2 = parent1.NumShifts - numSkippedOffspring2;
                 if (numSkippedOffspring1 > 0 && offspring1.Shifts.Count(parent2[i]) < DocShiftCounts[parent2[i]])
                 {
                     // Console.WriteLine("RE-ADDING {0} to Child A", parent2[i]);

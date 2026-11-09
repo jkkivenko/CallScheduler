@@ -10,7 +10,7 @@ namespace CallSchedulerApp.Schedules
         public int ModifiedAt { get; set; }
         public int Fitness { get; set; }
         public Dictionary<Doctor, int> DocShiftCounts { get; set; } = docShiftCounts;
-
+        internal int NumShifts { get; set; } = (endDate.DayNumber - startDate.DayNumber) * 2;
         internal Doctor[] Shifts { get; set; } = new Doctor[(endDate.DayNumber - startDate.DayNumber) * 2];
         /// <summary>
         /// Fills the Schedule with shifts.
@@ -21,7 +21,7 @@ namespace CallSchedulerApp.Schedules
             // First verify that the number of shifts to be assigned to each doctor adds up to the total number of shifts to be assigned.
             int numTotalShifts = 0;
             foreach (int value in DocShiftCounts.Values) numTotalShifts += value;
-            if (numTotalShifts != Shifts.Length) throw new ArgumentException("The number of shifts assigned to all doctors is invalid for this schedule length.");
+            if (numTotalShifts != NumShifts) throw new ArgumentException("The number of shifts assigned to all doctors is invalid for this schedule length.");
             int i = 0;
             foreach (KeyValuePair<Doctor, int> kvp in DocShiftCounts)
             {
@@ -42,8 +42,8 @@ namespace CallSchedulerApp.Schedules
         /// </summary>
         internal void Mutate()
         {
-            int index1 = Random.Shared.Next(Shifts.Length);
-            int index2 = Random.Shared.Next(Shifts.Length);
+            int index1 = Random.Shared.Next(NumShifts);
+            int index2 = Random.Shared.Next(NumShifts);
             (Shifts[index2], Shifts[index1]) = (Shifts[index1], Shifts[index2]); // Tuple swap
         }
         public Doctor this[int i]
@@ -54,7 +54,7 @@ namespace CallSchedulerApp.Schedules
         public override string ToString()
         {
             string representation = "";
-            for (int i = 0; i < Shifts.Length; i += 2)
+            for (int i = 0; i < NumShifts; i += 2)
             {
                 DateOnly date = StartDate.AddDays(i / 2);
                 if (date.DayOfWeek == DayOfWeek.Sunday) representation += "\n";
